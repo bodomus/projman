@@ -11,34 +11,50 @@ class ProjectManager (QtWidgets.QWidget):
         loader = QtUiTools.QUiLoader()
         p = self.getUiPath()
         self.ui = loader.load(r'c:/Houdini/17.5.327/houdini/python2.7libs/projman/projman.ui')
-        self.clearScene = self.ui.findChild(QtWidgets.QPushButton, "btnClearScene")
-        self.clearScene.clicked.connect(self.clearScene)
-        self.setProject = self.ui.findChild(QtWidgets.QPushButton, "btnSetProject")
+        self.clsScene = self.ui.findChild(QtWidgets.QPushButton, "btnClearScene")
+        self.clsScene.clicked.connect(self.clearScene)
+        self.setPrj = self.ui.findChild(QtWidgets.QPushButton, "btnSetProject")
+        self.setPrj.clicked.connect(self.setProject)
+        self.lblProjName  = self.ui.findChild(QtWidgets.QLabel, "lblProjectName")
+        self.lblProjName.setText('')
+        self.lblProjPath = self.ui.findChild(QtWidgets.QLabel, "lblProjectPath")
+        self.lblProjPath.setText('')
+
+        self.list = self.ui.findChild(QtWidgets.QListWidget, "listWidget")
+        self.list.doubleClicked.connect(self.loadHIPFile)
+
         self.layout = QtWidgets.QVBoxLayout()
         self.layout.addWidget(self.ui)
         self.setLayout(self.layout)
 
     def loadHIPFile(self, item):
-        print (item.data())
-        hou.hipFile.load(os.path.join(self.job, item.data()))
+        job = hou.getenv('JOB')
+        j = os.path.join(job, item.data())
+        hou.hipFile.load(j)
 
     def clearScene(self):
         hou.hipFile.clear()
 
+    def setProject(self):
+        job = hou.ui.selectFile(title='Select directory', file_type=hou.fileType.Directory)
+        hou.hscript("setenv JOB="+job)
+        self.lblProjName.setText(job.split('/')[-2])
+        self.lblProjPath.setText(hou.expandString(job))
+        self.createInterface()
+
     def createInterface(self):
+        #self.list.clear()
+        job = hou.getenv('JOB')
+        #job=job.replace('/','\\')
+        try:
+            for file in os.listdir(job):
+                if file.endswith('.hip'):
+                    self.list.addItem(file)
+        except:
+            hou.ui.displayMessage("Oops!  That was no valid path.  Try change project directory...")
+
         return None
+
     def getUiPath(self):
         return hou.getenv('HFS')+'/houdini/python2.7libs/projman/'
 
-    def createBoundaries(self):
-        geo = hou.pwd().geometry()
-        pt0 = geo.createPoint()
-        pt0.setPosition(hou.Vector3(1, 0, 0))
-        pt1 = geo.createPoint()
-        pt1.setPosition(hou.Vector3(0, 1, 0))
-        pt2 = geo.createPoint()
-        pt2.setPosition(hou.Vector3(0, 0, 1))
-        poly = geo.createPolygon()
-        poly.addVertex(pt0);
-        poly.addVertex(pt1);
-        poly.addVertex(pt2);
